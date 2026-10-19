@@ -1,4 +1,4 @@
-name: Build Windows Executable
+name: Build AuraVoice Windows EXE
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: 簽出原始碼
+    - name: 簽出專案原始碼
       uses: actions/checkout@v4
 
     - name: 設定 Python 3.11 環境
@@ -21,7 +21,7 @@ jobs:
         python-version: '3.11'
         cache: 'pip'
 
-    - name: 安裝相依套件與 PyInstaller
+    - name: 安裝相依依賴
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
@@ -30,16 +30,16 @@ jobs:
       run: |
         pyinstaller build.spec
 
-    - name: 上傳建置產物 (Artifacts)
+    - name: 上傳打包產物 (Artifacts)
       uses: actions/upload-artifact@v4
       with:
-        name: VoiceEnhancer-Windows
-        path: dist/VoiceEnhancer.exe
+        name: AuraVoice-Windows
+        path: dist/AuraVoice.exe
 
-    - name: 建立 GitHub Release 發佈
+    - name: 發佈 Release (打 Git Tag 時自動觸發)
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2
       with:
-        files: dist/VoiceEnhancer.exe
+        files: dist/AuraVoice.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -6,13 +6,12 @@ a = Analysis(
     ['app.py'],
     pathex=[],
     binaries=[],
-    datas=[],  # 清空，不包入任何外部模型或圖示
+    datas=[],
     hiddenimports=[
         'soundfile',
         'pedalboard',
-        'scipy.signal',
-        'scipy.special',
-        'scipy.special.cython_special',
+        'pedalboard.io',
+        'scipy',
         'numpy',
     ],
     hookspath=[],
@@ -23,7 +22,7 @@ a = Analysis(
         'tensorflow',
         'matplotlib',
         'IPython',
-        'pytest',
+        'pandas',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -40,7 +39,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='VoiceEnhancer',
+    name='AuraVoice',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -53,5 +52,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,  # 使用系統預設圖示
+    icon=None,
 )

@@ -35,13 +35,10 @@ def get_resource_path(relative_path: str) -> str:
     return os.path.join(os.path.abspath("."), relative_path)
 
 class ASROptimizerEngine:
-    """
-    專為語音辨識 / 判讀特化的聲音清晰化引擎
-    所有模式均以最大化模型特徵提取精度為基準，嚴格杜絕破音。
-    """
+    """專為語音辨識/判讀特化的聲音清晰化引擎"""
     PRESETS = {
         "conference": {
-            "name": "🏢 室內會議與演講 (去回音濁音、提亮咬字)",
+            "name": "室內會議與演講 (消除房間殘響、加強咬字共振)",
             "hp_cutoff": 90.0,
             "lp_cutoff": 7800.0,
             "mud_freq": 280.0,
@@ -53,31 +50,31 @@ class ASROptimizerEngine:
             "boost_gain": 3.0
         },
         "noisy": {
-            "name": "🚗 戶外與吵雜環境 (強效除噪、低頻截斷、人聲凸顯)",
-            "hp_cutoff": 130.0,     # 激進截除車流、風聲與冷氣低頻
-            "lp_cutoff": 7500.0,     # 去除高頻雜訊
+            "name": "戶外與吵雜環境 (強效除噪、低頻截斷、人聲凸顯)",
+            "hp_cutoff": 130.0,
+            "lp_cutoff": 7500.0,
             "mud_freq": 350.0,
             "mud_gain": -4.0,
             "voice_freq": 2800.0,
-            "voice_gain": 5.5,      # 強烈突出咬字共振峰
+            "voice_gain": 5.5,
             "comp_thresh": -20.0,
             "comp_ratio": 3.5,
             "boost_gain": 3.5
         },
         "distant": {
-            "name": "🎙️ 遠距微弱人聲 (微弱音量增強、深度動態拉平)",
+            "name": "遠距微弱語音 (提升微弱發音、深度動態拉平)",
             "hp_cutoff": 100.0,
             "lp_cutoff": 8000.0,
             "mud_freq": 300.0,
             "mud_gain": -2.0,
             "voice_freq": 3000.0,
             "voice_gain": 5.0,
-            "comp_thresh": -24.0,    # 低門檻抓取微弱發音
-            "comp_ratio": 4.5,      # 高壓縮比壓平動態
+            "comp_thresh": -24.0,
+            "comp_ratio": 4.5,
             "boost_gain": 5.0
         },
         "interview": {
-            "name": "🎧 清晰訪談與播客 (標準廣播級人聲、平衡高辨識度)",
+            "name": "清晰訪談與對話 (全頻段均衡、高保真發音辨識)",
             "hp_cutoff": 80.0,
             "lp_cutoff": 8500.0,
             "mud_freq": 250.0,
@@ -104,26 +101,18 @@ class ASROptimizerEngine:
         if callback:
             callback(35, f"套用【{cfg['name']}】頻段雕刻...")
 
-        # 針對語音判讀建構濾波鏈
         chain = [
-            # 1. 濾除對辨識無益甚至有害的超低頻震動與嗡鳴
             HighpassFilter(cutoff_frequency_hz=cfg["hp_cutoff"]),
-            # 2. 濾除高頻無效雜訊（讓模型專注於 8kHz 以下語音帶）
             LowpassFilter(cutoff_frequency_hz=cfg["lp_cutoff"]),
-            # 3. 精準消除讓說話發悶的頻段
             PeakFilter(cutoff_frequency_hz=cfg["mud_freq"], gain_db=cfg["mud_gain"], q=1.2),
-            # 4. 關鍵音素增強（凸顯咬字特徵點）
             PeakFilter(cutoff_frequency_hz=cfg["voice_freq"], gain_db=cfg["voice_gain"], q=1.1),
-            # 5. 平衡語音起伏（避免大聲爆音、小聲遺漏）
             Compressor(
                 threshold_db=cfg["comp_thresh"],
                 ratio=cfg["comp_ratio"],
                 attack_ms=8.0,
                 release_ms=60.0
             ),
-            # 6. 音量增益補償
             Gain(gain_db=cfg["boost_gain"]),
-            # 7. 廣播級極限器：鎖死在 -1.0 dBFS，保證絕對不失真爆音
             Limiter(threshold_db=-1.0, release_ms=30.0)
         ]
 
@@ -137,7 +126,6 @@ class ASROptimizerEngine:
         if callback:
             callback(90, "儲存高品質判讀音訊...")
 
-        # 轉存無損 WAV 供辨識模型讀取
         with AudioFile(output_path, 'w', sr, processed.shape[0]) as out:
             out.write(processed)
 
@@ -163,9 +151,11 @@ class MorandiASRApp(tk.Tk):
 
         self.configure(bg=self.C_BG)
 
-        self.font_main = ("Microsoft JhengHei UI", 9)
-        self.font_bold = ("Microsoft JhengHei UI", 9, "bold")
-        self.font_title = ("Microsoft JhengHei UI", 16, "bold")
+        # 統一設定為標準黑體 (Microsoft JhengHei UI)
+        FONT_FAMILY = "Microsoft JhengHei UI"
+        self.font_main = (FONT_FAMILY, 9)
+        self.font_bold = (FONT_FAMILY, 9, "bold")
+        self.font_title = (FONT_FAMILY, 15, "bold")
 
         self.input_file = tk.StringVar()
         self.output_file = tk.StringVar()
@@ -183,14 +173,13 @@ class MorandiASRApp(tk.Tk):
         style.configure("Morandi.TLabelframe.Label", background=self.C_CARD, foreground=self.C_TEXT, font=self.font_bold)
         style.configure("Morandi.TEntry", fieldbackground="#FFFFFF", foreground=self.C_TEXT, bordercolor=self.C_BORDER)
 
-        # 單選按鈕樣式
         style.configure("Morandi.TRadiobutton", background=self.C_CARD, foreground=self.C_TEXT, font=self.font_main)
         style.map("Morandi.TRadiobutton", background=[('active', self.C_CARD)])
 
         style.configure("Secondary.TButton", background=self.C_SECONDARY, foreground="#FFFFFF", borderwidth=0, font=self.font_main)
         style.map("Secondary.TButton", background=[('active', '#76848E')])
 
-        style.configure("Primary.TButton", background=self.C_PRIMARY, foreground="#FFFFFF", borderwidth=0, font=("Microsoft JhengHei UI", 11, "bold"))
+        style.configure("Primary.TButton", background=self.C_PRIMARY, foreground="#FFFFFF", borderwidth=0, font=self.font_bold)
         style.map("Primary.TButton", background=[('active', self.C_PRIMARY_HOV)])
 
         style.configure("Morandi.Horizontal.TProgressbar", troughcolor=self.C_BORDER, background=self.C_PRIMARY, bordercolor=self.C_BG, lightcolor=self.C_PRIMARY, darkcolor=self.C_PRIMARY)
@@ -203,7 +192,7 @@ class MorandiASRApp(tk.Tk):
         head = tk.Frame(root, bg=self.C_BG)
         head.pack(fill=tk.X, pady=(0, 14))
         tk.Label(head, text="AuraVoice ASR 語音特化增強", font=self.font_title, fg=self.C_TEXT, bg=self.C_BG).pack(anchor=tk.W)
-        tk.Label(head, text="一鍵針對不同錄音場景提升語音辨識率，防削波且無需手動調節", font=self.font_main, fg=self.C_MUTED, bg=self.C_BG).pack(anchor=tk.W, pady=(2, 0))
+        tk.Label(head, text="針對不同錄音環境提升語音辨識率，防削波且無需手動微調", font=self.font_main, fg=self.C_MUTED, bg=self.C_BG).pack(anchor=tk.W, pady=(2, 0))
 
         # 檔案路徑卡片
         fbox = ttk.LabelFrame(root, text=" 來源檔案與輸出設定 ", style="Morandi.TLabelframe", padding="12")
@@ -217,15 +206,15 @@ class MorandiASRApp(tk.Tk):
         ttk.Entry(fbox, textvariable=self.output_file, width=42, style="Morandi.TEntry").grid(row=1, column=1, padx=8, pady=4)
         ttk.Button(fbox, text="變更位置", style="Secondary.TButton", command=self.select_output).grid(row=1, column=2, pady=4)
 
-        # 場景模式選擇卡片 (無滑軌，直接選擇最佳預設)
+        # 場景模式選擇卡片
         sbox = ttk.LabelFrame(root, text=" 請選擇錄音環境場景 (自動套用最高辨識調校) ", style="Morandi.TLabelframe", padding="12")
         sbox.pack(fill=tk.X, pady=(0, 14))
 
         options = [
-            ("conference", "🏢 室內會議與演講 (消除房間殘響、加強咬字共振)"),
-            ("noisy",      "🚗 戶外與吵雜環境 (強效截除車流與環境噪聲、凸顯人聲)"),
-            ("distant",    "🎙️ 遠距微弱語音 (提升微弱發音、深度動態拉平)"),
-            ("interview",  "🎧 清晰訪談與對話 (全頻段均衡、高保真發音辨識)")
+            ("conference", "室內會議與演講 (消除房間殘響、加強咬字共振)"),
+            ("noisy",      "戶外與吵雜環境 (強效截除車流與環境噪聲、凸顯人聲)"),
+            ("distant",    "遠距微弱語音 (提升微弱發音、深度動態拉平)"),
+            ("interview",  "清晰訪談與對話 (全頻段均衡、高保真發音辨識)")
         ]
 
         for i, (key, label) in enumerate(options):

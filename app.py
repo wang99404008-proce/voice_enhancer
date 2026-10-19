@@ -195,4 +195,129 @@ class MorandiApp(tk.Tk):
         style.configure("Primary.TButton", background=self.C_PRIMARY, foreground="#FFFFFF", borderwidth=0, font=self.font_bold)
         style.map("Primary.TButton", background=[('active', self.C_PRIMARY_HOV)])
 
-        style.configure("Morandi
+        style.configure("Morandi.Horizontal.TProgressbar", troughcolor=self.C_BORDER, background=self.C_PRIMARY, bordercolor=self.C_BG, lightcolor=self.C_PRIMARY, darkcolor=self.C_PRIMARY)
+
+    def build_ui(self):
+        root = tk.Frame(self, bg=self.C_BG, padx=22, pady=16)
+        root.pack(fill=tk.BOTH, expand=True)
+
+        # 頂部大標題改為【人聲清晰特化】
+        head = tk.Frame(root, bg=self.C_BG)
+        head.pack(fill=tk.X, pady=(0, 10))
+        tk.Label(head, text="人聲清晰特化", font=self.font_title, fg=self.C_TEXT, bg=self.C_BG).pack(anchor=tk.W)
+        tk.Label(head, text="專為語音辨識 (ASR) 優化：消除間隙底噪、提升咬字共振、保證不破音", font=self.font_main, fg=self.C_MUTED, bg=self.C_BG).pack(anchor=tk.W, pady=(2, 0))
+
+        # 使用指南面板
+        guide_box = ttk.LabelFrame(root, text=" 📖 使用指南與判讀說明 ", style="Morandi.TLabelframe", padding="10")
+        guide_box.pack(fill=tk.X, pady=(0, 10))
+
+        guide_texts = (
+            "1. 格式支援：支援常見影片 (MP4, MOV, MKV) 與音訊檔 (MP3, WAV, M4A)，會自動解碼並提取聲音軌。\n"
+            "2. 場景選擇：若有冷氣或環境底噪請選「戶外／強噪」；演講與空曠房間選「室內會議」消除空洞感。\n"
+            "3. 輸出建議：輸出預設為無損高保真 WAV，已加入 -1.0 dBFS 防削波，可直接匯入語音辨識模型 (ASR) 進行判讀。"
+        )
+        tk.Label(guide_box, text=guide_texts, justify=tk.LEFT, fg=self.C_TEXT, bg=self.C_CARD, font=self.font_guide, anchor="w").pack(fill=tk.X)
+
+        # 檔案選取設定
+        fbox = ttk.LabelFrame(root, text=" 來源檔案與輸出設定 ", style="Morandi.TLabelframe", padding="10")
+        fbox.pack(fill=tk.X, pady=(0, 10))
+
+        tk.Label(fbox, text="影音來源:", fg=self.C_TEXT, bg=self.C_CARD, font=self.font_bold).grid(row=0, column=0, sticky=tk.W, pady=3)
+        ttk.Entry(fbox, textvariable=self.input_file, width=46, style="Morandi.TEntry").grid(row=0, column=1, padx=8, pady=3)
+        ttk.Button(fbox, text="瀏覽檔案", style="Secondary.TButton", command=self.select_input).grid(row=0, column=2, pady=3)
+
+        tk.Label(fbox, text="輸出儲存:", fg=self.C_TEXT, bg=self.C_CARD, font=self.font_bold).grid(row=1, column=0, sticky=tk.W, pady=3)
+        ttk.Entry(fbox, textvariable=self.output_file, width=46, style="Morandi.TEntry").grid(row=1, column=1, padx=8, pady=3)
+        ttk.Button(fbox, text="變更位置", style="Secondary.TButton", command=self.select_output).grid(row=1, column=2, pady=3)
+
+        # 場景模式選擇
+        sbox = ttk.LabelFrame(root, text=" 請選擇強化場景 (已內建各場景最佳抗噪與咬字增強) ", style="Morandi.TLabelframe", padding="10")
+        sbox.pack(fill=tk.X, pady=(0, 12))
+
+        options = [
+            ("conference", "室內會議／演講（消除回音空洞感、大幅清濁提亮）"),
+            ("noisy",      "吵雜戶外／強噪（激進除噪、切除低頻風噪、人聲極致前推）"),
+            ("distant",    "微弱耳語／遠距離（小聲自動放大、全面拉平動態音量）"),
+            ("interview",  "清晰訪談／標準廣播（消除底噪、廣播主播級飽滿通透）")
+        ]
+
+        for i, (key, label) in enumerate(options):
+            r = ttk.Radiobutton(sbox, text=label, value=key, variable=self.selected_preset, style="Morandi.TRadiobutton")
+            r.grid(row=i, column=0, sticky=tk.W, pady=2)
+
+        # 狀態與進度條
+        self.status_label = tk.Label(root, text="就緒 (請載入欲優化的影音檔案)", font=self.font_main, fg=self.C_MUTED, bg=self.C_BG)
+        self.status_label.pack(anchor=tk.W, pady=(0, 4))
+
+        self.progress_bar = ttk.Progressbar(root, style="Morandi.Horizontal.TProgressbar", orient=tk.HORIZONTAL, mode='determinate')
+        self.progress_bar.pack(fill=tk.X, pady=(0, 14))
+
+        # 執行按鈕
+        self.run_btn = ttk.Button(root, text="開始人聲清晰特化處理", style="Primary.TButton", command=self.start_processing)
+        self.run_btn.pack(fill=tk.X, ipady=5)
+
+    def select_input(self):
+        f = filedialog.askopenfilename(
+            title="選擇影音檔案",
+            filetypes=[
+                ("所有影音格式", "*.mp4 *.mov *.mkv *.mp3 *.wav *.m4a *.flac *.aac *.ogg"),
+                ("影片檔案", "*.mp4 *.mov *.mkv *.avi"),
+                ("音訊檔案", "*.mp3 *.wav *.m4a *.flac"),
+                ("所有檔案", "*.*")
+            ]
+        )
+        if f:
+            self.input_file.set(f)
+            base, _ = os.path.splitext(f)
+            self.output_file.set(f"{base}_enhanced.wav")
+            self.status_label.config(text=f"已選取：{os.path.basename(f)}")
+
+    def select_output(self):
+        f = filedialog.asksaveasfilename(
+            title="選擇輸出路徑",
+            defaultextension=".wav",
+            filetypes=[("高保真 WAV 音訊", "*.wav"), ("FLAC 無損", "*.flac")]
+        )
+        if f:
+            self.output_file.set(f)
+
+    def update_progress(self, percent: int, msg: str):
+        self.progress_bar['value'] = percent
+        self.status_label.config(text=msg)
+        self.update_idletasks()
+
+    def start_processing(self):
+        src = self.input_file.get()
+        dst = self.output_file.get()
+        preset = self.selected_preset.get()
+
+        if not src or not os.path.exists(src):
+            messagebox.showwarning("提示", "請先選擇有效的影音檔案！")
+            return
+        if not dst:
+            messagebox.showwarning("提示", "請指定輸出檔案位置！")
+            return
+
+        self.run_btn.config(state=tk.DISABLED)
+
+        def worker():
+            try:
+                DistinctASREngine.process_file(
+                    src,
+                    dst,
+                    preset_key=preset,
+                    callback=self.update_progress
+                )
+                messagebox.showinfo("完成", f"人聲特化完成！\n輸出檔案：\n{dst}\n間隙底噪已消除，咬字清晰度已顯著提升！")
+            except Exception as e:
+                messagebox.showerror("錯誤", f"處理失敗：\n{str(e)}")
+            finally:
+                self.run_btn.config(state=tk.NORMAL)
+                self.status_label.config(text="就緒")
+                self.progress_bar['value'] = 0
+
+        threading.Thread(target=worker, daemon=True).start()
+
+if __name__ == "__main__":
+    app = MorandiApp()
+    app.mainloop()
